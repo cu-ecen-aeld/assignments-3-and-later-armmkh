@@ -117,15 +117,15 @@ cp autorun-qemu.sh ${OUTDIR}/rootfs/home
 cp finder.sh ${OUTDIR}/rootfs/home
 cp finder-test.sh ${OUTDIR}/rootfs/home
 mkdir -p ${OUTDIR}/rootfs/home/conf
-cp conf/username.txt ${OUTDIR}/rootfs/home/conf
-cp conf/assignment.txt ${OUTDIR}/rootfs/home/conf
-cd ${OUTDIR}/rootfs
+mkdir -p ${OUTDIR}/rootfs/conf
+sudo cp conf/* ${OUTDIR}/rootfs/home/conf/
+sudo cp conf/* ${OUTDIR}/rootfs/conf/
 
 # TODO: Chown the root directory
-sudo chown -R root:root * 
-
 cd ${OUTDIR}/rootfs
+sudo chown -R root:root * 
+ 
 # TODO: Create initramfs.cpio.gz
 find . -print0 | cpio --null -ov --format=newc --owner root:root > ../initramfs.cpio 
 cd ..
-gzip ./initramfs.cpio
+gzip -f ./initramfs.cpio

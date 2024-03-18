@@ -1,5 +1,4 @@
-#!/bin/bash
-
+#!/bin/sh
 set -e
 
 if [ $# != 2 ]
@@ -15,10 +14,9 @@ else
 fi
 
 cd $1 
-NFILES=$(find | wc -l)
-((NFILES--)) 
+NFILES=$((find | wc -l))
+let NFILES--
+(( $NFILES=$NFILES-1)) 
 NMATCHES=$(grep -r $2 ./* | wc -l)
 
-echo "The number of files are ${NFILES} and the number of matching lines are ${NMATCHES}"  
-
-
+echo "The number of files are ${NFILES} and the number of matching lines are ${NMATCHES}"
