@@ -1,22 +1,19 @@
 #!/bin/sh
-set -e
 
-if [ $# != 2 ]
-then
-	echo "This script expects two arguments."
-	exit 1	
-else 
-    if ! test -d $1; 
-    then 
-        echo "Directory does not exist."
-        exit 1
-    fi
+dir=$1
+str=$2
+
+if [ $# -ne 2 ]; then
+    echo "This script expects two arguments."
+    exit 1
 fi
 
-cd $1 
-NFILES=$((find | wc -l))
-let NFILES--
-(( $NFILES=$NFILES-1)) 
-NMATCHES=$(grep -r $2 ./* | wc -l)
+if ! [ -d $dir ]; then
+    echo "Directory $dir does not exist."
+    exit 1
+fi
 
-echo "The number of files are ${NFILES} and the number of matching lines are ${NMATCHES}"
+files_num=`grep -rl ${str} ${dir} | wc -l`
+match_num=`grep -or ${str} ${dir} | wc -w`
+
+echo "The number of files are ${files_num} and the number of matching lines are ${match_num}"

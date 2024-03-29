@@ -5,8 +5,6 @@
 set -e
 set -u
 
-#make clean 
-
 NUMFILES=10
 WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp/aeld-data
@@ -61,7 +59,9 @@ done
 
 OUTPUTSTRING=$(finder.sh "$WRITEDIR" "$WRITESTR")
 
-echo $OUTPUTSTRING > /tmp/assignment4-result.txt
+# redirect finder.sh output to result
+echo "${OUTPUTSTRING}" > /tmp/assignment4-result.txt
+
 # remove temporary directories
 rm -rf /tmp/aeld-data
 
