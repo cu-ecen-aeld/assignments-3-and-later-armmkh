@@ -17,8 +17,8 @@ char *buffer;
 void error(const char *msg)
 {
     //
-    printf("FREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
-    free(buffer);
+    //printf("FREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
+    //free(buffer);
     perror(msg);
     exit(-1);
 }
@@ -72,59 +72,7 @@ ssize_t read_line(int fileDesc, void *buffer, size_t n)
 }
 
 ////////////////////////////////////////////////////////
-
-typedef struct NameInformation
-{
-    char host[NI_MAXHOST];
-    char serv[NI_MAXSERV];
-} NameInformation;
-void get_name_info(struct sockaddr *ai_addr, socklen_t ai_addrlen,
-                   NameInformation *nameInfo)
-{
-    int s;
-    s = getnameinfo(ai_addr, ai_addrlen,
-                    nameInfo->host, NI_MAXHOST,
-                    nameInfo->serv, NI_MAXSERV, 0);
-    if (s != 0)
-    {
-        syslog(LOG_ERR, "_getNameInfo: getnameinfo failed: %s\n", gai_strerror(s));
-        syslog(LOG_ERR, "sa_family: %d\n sa_data: %s\n", ai_addr->sa_family,
-               ai_addr->sa_data);
-        exit(EXIT_FAILURE);
-    }
-}
-
-int getSocket(int _bind, struct addrinfo *result)
-{
-    struct addrinfo *rp;
-    int sfd;
-    for (rp = result; rp != NULL; rp = rp->ai_next)
-    {
-        sfd = socket(rp->ai_family, rp->ai_socktype,
-                     rp->ai_protocol);
-
-        if (sfd == -1)
-            continue;
-
-        int err;
-        if (_bind)
-            err = bind(sfd, rp->ai_addr,
-                       rp->ai_addrlen);
-        else
-            err = connect(sfd, rp->ai_addr,
-                          rp->ai_addrlen);
-        if (!err)
-            break;
-    }
-
-    if (rp == NULL)
-    {
-        syslog(LOG_ERR, "server: Failed to bind.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    return sfd;
-}
+  
 
 int bind_or_connect(char *host, char *port,
                     int _bind)
@@ -145,10 +93,36 @@ int bind_or_connect(char *host, char *port,
                     &result) != 0)
         error("getAddressInfo: getaddrinfo failed.");
 
-    int x = getSocket(_bind, result);
+    struct addrinfo *addr2;
+    int outcode;
+    for (addr2 = result; addr2 != NULL; addr2 = addr2->ai_next)
+    {
+        outcode = socket(addr2->ai_family, addr2->ai_socktype,
+                     addr2->ai_protocol);
+
+        if (outcode == -1)
+            continue;
+
+        int err;
+        if (_bind)
+            err = bind(outcode, addr2->ai_addr,
+                       addr2->ai_addrlen);
+        else
+            err = connect(outcode, addr2->ai_addr,
+                          addr2->ai_addrlen);
+        if (!err)
+            break;
+    }
+
+    if (addr2 == NULL)
+    {
+        syslog(LOG_ERR, "server: Failed to bind.\n");
+        exit(EXIT_FAILURE);
+    }
+ 
     freeaddrinfo(result);
 
-    return x;
+    return outcode;
 }
 
 ////////////////////////////////////////////////////
@@ -188,29 +162,25 @@ int main(int argc, char *argv[])
         if (strcmp(argv[1], "-d") == 0)
         {
             pid = fork();
-            if (pid == -1)
-            {
-                syslog(LOG_ERR, "Failed to fork(): %s", strerror(errno));
-                error("ERROR forking");
-            }
-            else if (pid != 0)
+            if ( pid > 0 )
             {
                 syslog(LOG_INFO, "Successfully forked: %d", pid);
-                error("ERROR forking");
+                exit(EXIT_SUCCESS);
             }
+            else if (pid == -1)
+            {
+                syslog(LOG_ERR, "Failed to fork(): %s", strerror(errno));
+                error("ERROR forking.");
+            } 
 
             if (setsid() == -1)
-            {
-                syslog(LOG_ERR, "Failed to create new session and group: %s",
-                       strerror(errno));
-                error("ERROR forking");
+            { 
+                error("ERROR forking Failed to create new session and group");
             }
 
             if (chdir("/") == -1)
             {
-                syslog(LOG_ERR, "Failed to changed to root dir: %s",
-                       strerror(errno));
-                error("ERROR forking");
+                error("ERROR forking Failed to changed to root dir"); 
             }
 
             open("/dev/null", O_RDWR);
@@ -240,11 +210,11 @@ int main(int argc, char *argv[])
         newsockfd = accept(sockfd,
                            (struct sockaddr *)&cli_addr,
                            &clilen);
-        if (newsockfd < 0)
+        if (newsockfd == -1)
             error("ERROR on accept");
         bzero(buffer, BUFFER_SIZE);
         n = read_line(newsockfd, buffer, BUFFER_SIZE);
-        if (n < 0)
+        if (n == -1)
             error("ERROR reading from socket");
 
         count = strlen(buffer);
