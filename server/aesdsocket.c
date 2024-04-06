@@ -12,7 +12,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #define BUFFER_SIZE 32000
-char *buffer ;
+char *buffer;
 
 void error(const char *msg)
 {
@@ -23,49 +23,56 @@ void error(const char *msg)
     exit(-1);
 }
 
-ssize_t read_line(int fdesc, void *buffer, size_t n)
+ssize_t read_line(int fileDesc, void *buffer, size_t n)
 {
-    if (n < 1 || buffer == NULL)
-        return -1;
-    char c;
-
+    ssize_t numberOFReads;
     size_t total = 0;
-    char *buffer2 = buffer;
-    long readBytes = 0;
+    
+    char ch;
+
+    if (n <= 0 || buffer == NULL)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    char *buf = buffer;
+    total = 0;
     while (1)
     {
-        readBytes = read(fdesc, &c, 1);
-
-        switch (readBytes)
+        numberOFReads = read(fileDesc, &ch, 1);
+        if (numberOFReads == -1)
         {
-        case -1:
             if (errno == EINTR)
                 continue;
             else
                 return -1;
-            break;
-        case 0:
+        }
+        else if (numberOFReads == 0)
+        {
             if (total == 0)
-                return total; // no bytes to read
+                return total;
             else
                 break;
-
-        default:
+        }
+        else
+        {
             if (total < n - 1)
             {
+                *buf++ = ch;
                 total++;
-                *buffer2++ = c;
             }
-
-            if (c == '\n')
+            if (ch == '\n')
                 break;
         }
     }
+
+    *buf = '\0';
     return total;
 }
 
 ////////////////////////////////////////////////////////
- 
+
 typedef struct NameInformation
 {
     char host[NI_MAXHOST];
@@ -122,8 +129,8 @@ int getSocket(int _bind, struct addrinfo *result)
 int bind_or_connect(char *host, char *port,
                     int _bind)
 {
-    struct addrinfo *result;  
- 
+    struct addrinfo *result;
+
     struct addrinfo myaddrinf;
 
     memset(&myaddrinf, 0, sizeof(struct addrinfo));
@@ -133,9 +140,9 @@ int bind_or_connect(char *host, char *port,
     myaddrinf.ai_canonname = NULL;
     myaddrinf.ai_addr = NULL;
     myaddrinf.ai_next = NULL;
- 
+
     if (getaddrinfo(host, port, &myaddrinf,
-                    &result) != 0) 
+                    &result) != 0)
         error("getAddressInfo: getaddrinfo failed.");
 
     int x = getSocket(_bind, result);
@@ -151,11 +158,11 @@ char *filename = "/var/tmp/aesdsocketdata";
 int main(int argc, char *argv[])
 {
     int sockfd, newsockfd;
-    int portno = 9000;
+    char *portno;
     FILE *filePointer;
     socklen_t clilen;
     int fdesc;
-    struct sockaddr_in serv_addr, cli_addr;
+    struct sockaddr cli_addr;
     int n;
     char *buffer = (char *)malloc(BUFFER_SIZE);
     if (buffer == NULL)
@@ -167,18 +174,14 @@ int main(int argc, char *argv[])
         error("ERROR opening socket");
     }
 
-    bzero((char *)&serv_addr, sizeof(serv_addr));
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(portno);
- 
-    char portchar[4];
-    sprintf(portchar, "%d", portno);
-
-    //printf("=========================portchar is: %s",portchar);
-    sockfd = bind_or_connect((char *)"localhost", portchar, 1);
-
+    if (argc > 2)
+    {
+        portno = argv[2];
+    }
+    else
+    {
+        portno = "9000";
+    }
     int pid;
     if (argc > 1)
     {
@@ -215,6 +218,10 @@ int main(int argc, char *argv[])
             dup(1);
         }
     }
+
+    // printf("=========================portchar is: %s",portchar);
+    sockfd = bind_or_connect((char *)"localhost", portno, 1);
+
     if (listen(sockfd, 5) == -1)
         error("could not listen on port.");
     clilen = sizeof(cli_addr);
